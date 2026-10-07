@@ -1,17 +1,14 @@
 {
-  "name": "zeus-panel-railway",
+  "name": "zeus-render",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Railway runtime for a Cloudflare Worker-compatible ZEUS panel using workerd/Miniflare",
-  "scripts": {
-    "start": "node server.mjs",
-    "prepare-worker": "node scripts/prepare-worker.mjs"
-  },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.5.0"
   },
-  "dependencies": {
-    "miniflare": "5.20260930.0-alpha"
-  }
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check runtime/cloudflare-sockets.js && node --check runtime/d1.js && node --check runtime/cache.js && node --check runtime/transform.js && node --check runtime/websocket.js"
+  },
+  "dependencies": {}
 }

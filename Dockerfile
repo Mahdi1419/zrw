@@ -1,9 +1,9 @@
 FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-ENV CLOUDFLARE_CF_FETCH_ENABLED=false
+ENV DATA_DIR=/var/data
 COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund
 COPY . .
-EXPOSE 8787
+RUN mkdir -p /var/data && npm run check
+EXPOSE 10000
 CMD ["npm", "start"]

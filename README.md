@@ -1,43 +1,40 @@
-# ZEUS Panel on Railway
+# ZEUS Panel — Render edition
 
-This project runs the supplied Cloudflare Worker on Railway using Cloudflare's local `workerd` runtime through Miniflare. This keeps the original Worker APIs available (`cloudflare:sockets`, `WebSocketPair`, D1 API, Cache API, `ctx.waitUntil`, Web Crypto, Fetch/Streams) instead of rewriting the proxy core into a different networking stack.
+این پوشه نسخه‌ی آماده‌ی Render از Worker ارسالی است. هسته‌ی پنل، APIها، subscription/status، WebSocket و اتصال‌های TCP خروجی از طریق لایه‌ی سازگاری Node اجرا می‌شوند.
 
-## Deploy on Railway
+## سریع‌ترین روش Deploy
 
-1. Put this directory in a GitHub repository (or deploy it with the Railway CLI).
-2. Create a Railway service from the repository and generate a public domain.
-3. **Attach a Railway Volume** to the service. Recommended mount path: `/data`.
-4. Add `PANEL_RECOVERY_TOKEN` as a long random secret. This is optional but strongly recommended so the panel's password-recovery screen remains usable without exposing a Railway account token.
-5. Deploy. Railway supplies `PORT`; the app binds to `0.0.0.0:$PORT` automatically.
-6. Open `https://<your-domain>/panel` and complete the initial panel password setup.
+1. محتویات همین پوشه را در یک Repository گیت‌هاب قرار بده.
+2. در Render گزینه **New → Blueprint** را بزن و Repository را متصل کن.
+3. Render فایل `render.yaml` را می‌خواند و Web Service را می‌سازد.
+4. بعد از Deploy، آدرس `https://YOUR-SERVICE.onrender.com/panel` را باز کن.
+5. Health check روی `/healthz` تنظیم شده است.
 
-The local D1 database and Cache storage are persisted under the attached volume. If no volume is attached, the service still runs, but users/settings can be lost on redeploy/restart.
+`RECOVERY_TOKEN` در Blueprint به‌طور خودکار یک مقدار امن می‌گیرد. اگر خواستی مقدار مشخص خودت را داشته باشی، آن را در Environment سرویس تغییر بده.
 
-## What was adapted
+## Free یا Persistent؟
 
-- Cloudflare Worker runtime -> local `workerd`/Miniflare runtime inside Railway.
-- D1 -> Miniflare's local D1 implementation, persisted on the Railway Volume.
-- `cloudflare:sockets` -> remains native to `workerd`; no protocol-core rewrite is required.
-- WebSocket upgrade / `WebSocketPair` -> remains Worker-native and Railway forwards WebSockets to the service.
-- Client IP detection -> supports `CF-Connecting-IP`, `X-Forwarded-For`, and `X-Real-IP`.
-- Panel password recovery -> accepts `PANEL_RECOVERY_TOKEN`; alternatively a Railway API token with access to the current service can be used.
-- In-panel updater -> downloads the upstream Worker source, reapplies the Railway compatibility patch, writes it to the persistent volume, and hot-reloads the Worker. A backup is kept as `runtime/worker.js.bak`.
-- Existing panel/API/subscription/status/PWA/proxy logic is retained.
+`render.yaml` روی پلن Free ساخته شده و برای تست سریع مناسب است. در Free، فایل‌سیستم ephemeral است؛ بنابراین دیتابیس SQLite و تغییرات محلی ممکن است با restart/redeploy/spin-down از بین بروند.
 
-## Important Railway networking difference
+برای استفاده‌ی پایدار، `render-persistent.yaml` نمونه‌ی سرویس پولی با Persistent Disk روی `/var/data` است. هنگام ساخت Blueprint می‌توانی نام فایل Blueprint را روی `render-persistent.yaml` قرار بدهی، یا بعداً به سرویس پولی ارتقا بدهی و Disk را روی `/var/data` متصل کنی.
 
-Railway exposes the HTTP service through its public domain, so client configurations should use the Railway hostname and the normal HTTPS/WSS public endpoint. Cloudflare-specific alternate edge ports (2053, 2083, 2087, 2096, 8443, etc.) are not separate public ports on a normal Railway HTTP service. The Worker logic can still generate configs, but for Railway the practical public WSS port is 443.
+## Environment Variables
 
-If you require a raw TCP public listener in addition to HTTP/WSS, configure Railway TCP Proxy separately; that is a different ingress mode from the Worker WebSocket endpoint.
+- `DATA_DIR=/var/data`
+- `PUBLIC_PORT=443`
+- `RECOVERY_TOKEN`: توکن بازیابی رمز پنل
+- `ALLOW_CLOUDFLARE_EDGE_IPS=0`: فقط اگر دامنه‌ی سفارشی خودت واقعاً پشت Cloudflare Proxy است روی `1` بگذار.
+- `UPDATE_SOURCE_URL`: اختیاری؛ آدرس سورس upstream برای updater داخلی.
 
-## Updating
+## نکته شبکه
 
-The panel's existing update button now talks to an internal Node control binding rather than the Cloudflare Workers deployment API. By default it downloads:
+برای اتصال عمومی از دامنه Render و `wss://` روی پورت 443 استفاده کن. پورت‌های Edge مخصوص Cloudflare مثل 2053/2083/2087/2096/8443 در Web Service معمولی Render معادل مستقیم ندارند.
 
-`https://raw.githubusercontent.com/panel-zeus/Z-E-U-S/refs/heads/main/zeus.obfuscated.js`
+## فایل‌ها
 
-Override with `UPDATE_SOURCE_URL` if your source lives elsewhere. Because the patched runtime worker is stored on the Railway Volume, the updated version survives service restarts.
-
-## Backup / restore
-
-Back up the Railway Volume. It contains both the persisted D1 state and the currently active patched Worker source. For a clean reset, remove the Miniflare data on the volume and restart the service.
+- `Source.js`: Worker اصلی
+- `server.js`: HTTP/WebSocket adapter برای Render
+- `runtime/`: D1/TCP/WebSocket/Cache compatibility layer
+- `render.yaml`: Blueprint رایگان برای تست
+- `render-persistent.yaml`: Blueprint نمونه با Persistent Disk
+- `Dockerfile`: اجرای Node.js 22

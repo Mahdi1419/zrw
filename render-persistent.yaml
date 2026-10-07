@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: zeus-panel
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    disk:
+      name: zeus-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: PUBLIC_PORT
+        value: "443"
+      - key: ALLOW_CLOUDFLARE_EDGE_IPS
+        value: "0"
+      - key: RECOVERY_TOKEN
+        generateValue: true

@@ -1,5 +1,6 @@
 node_modules
+npm-debug.log*
 .git
-.railway-data
-.generated
-*.zip
+.gitignore
+data/*
+!data/.gitkeep
