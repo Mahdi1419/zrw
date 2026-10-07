@@ -1,0 +1,5 @@
+node_modules
+.git
+.railway-data
+.generated
+*.zip
